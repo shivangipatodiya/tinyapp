@@ -72,9 +72,15 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.post("/urls/:shortURL/delete", (req, res) => {
   const shortId = req.params.shortURL
-  console.log(shortId, "1")
-  console.log(JSON.stringify(urlDatabase))
   delete urlDatabase[shortId]
-  console.log(urlDatabase)
   res.redirect("/urls")
+});
+
+app.post("/urls/:id", (req, res) => {
+  const id = req.params.id
+  if (req.body.longURL) {
+  const newLongURL = req.body['longURL']
+  urlDatabase[id] = newLongURL }
+  res.redirect(`/urls/${id}`)
+
 })
