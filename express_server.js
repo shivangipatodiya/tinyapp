@@ -16,6 +16,8 @@ function generateRandomString() {
   return output;
 }
 
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -43,16 +45,24 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  console.log(req.cookies);
+  const templateVars = {
+    urls: urlDatabase,
+    username: req.cookies["username"]
+  };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars = {
+    username: req.cookies["username"]
+  };
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
+    username: req.cookies["username"],
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL]
   };
@@ -71,16 +81,27 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const shortId = req.params.shortURL
-  delete urlDatabase[shortId]
-  res.redirect("/urls")
+  const shortId = req.params.shortURL;
+  delete urlDatabase[shortId];
+  res.redirect("/urls");
 });
 
 app.post("/urls/:id", (req, res) => {
-  const id = req.params.id
+  const id = req.params.id;
   if (req.body.longURL) {
-  const newLongURL = req.body['longURL']
-  urlDatabase[id] = newLongURL }
-  res.redirect(`/urls/${id}`)
+    const newLongURL = req.body["longURL"];
+    urlDatabase[id] = newLongURL;
+  }
+  res.redirect(`/urls/${id}`);
+});
 
-})
+app.post("/login", (req, res) => {
+  const val = req.body["username"];
+  res.cookie("username", val);
+  res.redirect("/urls");
+});
+
+app.post("/logout", (req, res) => {
+  res.clearCookie("username");
+  res.redirect("/urls");
+});
