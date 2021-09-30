@@ -27,7 +27,7 @@
       <div class="card-header"></div>
       <div class="card-body">
         <h5 class="card-title">Edit</h5>
-        <form method="POST">
+        <form method="POST" action="/urls/<%= shortURL %>">
           <label for="longURL">New URL:</label>
           <input
             name="longURL"
