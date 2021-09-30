@@ -6,10 +6,16 @@ const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
+const bcrypt = require("bcryptjs");
 
 app.set("view engine", "ejs");
+
 const users = {
-  123456: { id: "123456", email: "user@example.com", password: "1234" }
+  123456: {
+    id: "123456",
+    email: "user@example.com",
+    password: bcrypt.hashSync("1234", 10)
+  }
 };
 
 function generateRandomString() {
@@ -91,7 +97,7 @@ app.post("/login", (req, res) => {
     return res.status(403).send("No user found");
   }
   if (user) {
-    if (password !== user["password"]) {
+    if (!bcrypt.compareSync(password, user.password)) {
       return res.status(403).send("Password not correct");
     }
     res.cookie("user_id", user.id);
@@ -104,6 +110,7 @@ app.post("/login", (req, res) => {
 app.post("/register", (req, res) => {
   const email = req.body["email"];
   const password = req.body["password"];
+  const hashedPassword = bcrypt.hashSync(password, 10);
   // to make sure input is not blank
   if (!email || !password) {
     return res.status(400).send("Email or password cannot be blank");
@@ -114,7 +121,7 @@ app.post("/register", (req, res) => {
   }
 
   const id = Math.floor(Math.random() * 3000) + 1;
-  users[id] = { id: id, email: email, password: password };
+  users[id] = { id: id, email: email, password: hashedPassword };
   res.cookie("user_id", id);
   res.redirect("/urls");
 });
