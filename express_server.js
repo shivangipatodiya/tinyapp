@@ -18,7 +18,7 @@ app.use(
   })
 );
 
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs"); 
 
 app.set("view engine", "ejs");
 
@@ -43,6 +43,12 @@ const urlDatabase = {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+* This endpoint takes the user to the registration page.
+* If the user is already logged in -> redirect to 'MyUrls' page.
+* If not already logged in, open the registration page
+*/
+
 app.get("/register", (req, res) => {
   if (req.session.user_id) {
     res.redirect("/urls");
@@ -56,37 +62,11 @@ app.get("/register", (req, res) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-app.get("/login", (req, res) => {
-  if (req.session.user_id) {
-    res.redirect("/urls");
-    return;
-  }
+/*
+* The information, provided by the user to register, get saved to the database and
+  further redirects to the 'MyUrls' list page.
+*/
 
-  res.render("login_", { user: {} });
-});
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-app.post("/login", (req, res) => {
-  const email = req.body["email"];
-  const password = req.body["password"];
-  if (!email || !password) {
-    return res.status(400).send("Email or password cannot be blank");
-  }
-  const user = findUserWithEmail(email, users);
-  if (!user) {
-    return res.status(403).send("No user found");
-  }
-  if (user) {
-    if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(403).send("Password not correct");
-    }
-    req.session.user_id = user.id;
-  }
-  res.redirect("/urls");
-});
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 app.post("/register", (req, res) => {
   const email = req.body["email"];
@@ -107,6 +87,50 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+* This endpoint takes the user to the login page.
+* If user is already logged in -> redirects to 'MyUrls' page.
+* If user is not logged in, opens the login page 
+*/
+app.get("/login", (req, res) => {
+  if (req.session.user_id) {
+    res.redirect("/urls");
+    return;
+  }
+
+  res.render("login_", { user: {} });
+});
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+* The information provided by user is checked with the database and then the user is redirected to 'MyUrls' page
+*/
+app.post("/login", (req, res) => {
+  const email = req.body["email"];
+  const password = req.body["password"];
+  // to make sure input is not blank
+  if (!email || !password) {
+    return res.status(400).send("Email or password cannot be blank");
+  }
+  // to check if the email is present in the database
+  const user = findUserWithEmail(email, users);
+  if (!user) {
+    return res.status(403).send("No user found");
+  }
+  // to check if the password is correct or not
+  if (user) {
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.status(403).send("Password not correct");
+    }
+    req.session.user_id = user.id;
+  }
+  res.redirect("/urls");
+});
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
@@ -116,7 +140,7 @@ app.get("/", (req, res) => {
   if (!req.session.user_id) {
     res.redirect("/login");
   }
-  res.send("Hello!");
+  res.redirect("/urls");
 });
 
 app.get("/urls.json", (req, res) => {
@@ -128,11 +152,13 @@ app.get("/hello", (req, res) => {
 });
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+* This endpoint takes the user to his/her own 'MyUrls' page if user is already logged in.
+* If not, user is redirected to the login page
+*/
 app.get("/urls", (req, res) => {
   if (!req.session.user_id) {
-    return res
-      .status(401)
-      .send("<html><body><b>LOGIN</b> to access</body></html>\n");
+    return res.redirect("/login")
   }
 
   const templateVars = {
@@ -145,6 +171,10 @@ app.get("/urls", (req, res) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+* This endpoint takes the user to the page to create a new short Url, if user is logged in.
+* If not, user is redirected to the login page
+*/
 app.get("/urls/new", (req, res) => {
   if (!req.session.user_id) {
     return res.redirect("/login");
@@ -157,6 +187,10 @@ app.get("/urls/new", (req, res) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+This takes up the information provided by the user on tne Url creation page and adds it the user's 'MyUrls' page and
+also the database. Further it redirects to the long Url page provided by the user to be added.
+*/
 app.post("/urls", (req, res) => {
   if (!req.session.user_id) {
     return res
@@ -164,7 +198,10 @@ app.post("/urls", (req, res) => {
       .send("<html><body><b>Login</b> to add new URL</body></html>\n");
   }
 
-  const longUrl = req.body["longURL"];
+  let longUrl = req.body["longURL"];
+  if (!longUrl.includes("http://") || !longUrl.includes("https://")) {
+    longUrl = "http://" + longUrl;
+  }
   if (!longUrl) {
     return res
       .status(400)
@@ -182,6 +219,9 @@ app.post("/urls", (req, res) => {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+This endpoint opens its corresponding long Url page, if it is present in the database, else the error is shown. 
+*/ 
 app.get("/u/:shortURL", (req, res) => {
   if (!urlDatabase[req.params.shortURL]) {
     return res
@@ -194,6 +234,9 @@ app.get("/u/:shortURL", (req, res) => {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+This endpoint take the user to the Url Show page for the selected short Url, where user can edit the long Url
+*/
 app.get("/urls/:shortURL", (req, res) => {
   if (!req.session.user_id) {
     return res.status(403).send("Cannot access this page without logging in");
@@ -217,7 +260,9 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+ /*
+ This page allows the user to edit the long Url, if user is logged in
+ */
 app.post("/urls/:id", (req, res) => {
   if (!req.session.user_id) {
     return res
@@ -229,9 +274,15 @@ app.post("/urls/:id", (req, res) => {
 
   const id = req.params.id;
   const myUrls = urlsForUser(req.session.user_id, urlDatabase);
+  if (!req.body["longURL"]) {
+    return res.redirect(`/urls/${id}`);
+  }
   for (let url of myUrls) {
     if (id === url) {
-      const newLongURL = req.body["longURL"];
+      let newLongURL = req.body["longURL"];
+      if (!newLongURL.includes("http://") && !newLongURL.includes("https://")) {
+        newLongURL = "http://" + newLongURL;
+      }
       urlDatabase[id]["longURL"] = newLongURL;
       return res.redirect(`/urls/${id}`);
     }
@@ -243,6 +294,9 @@ app.post("/urls/:id", (req, res) => {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+This allows the user to delete the Url from the 'MyUrls' page.
+*/
 app.post("/urls/:shortURL/delete", (req, res) => {
   if (!req.session.user_id) {
     return res
@@ -256,7 +310,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   for (let url of myUrls) {
     if (shortId === url) {
       delete urlDatabase[shortId];
-      res.redirect("/urls");
+      return res.redirect("/urls");
     }
   }
   return res
@@ -267,7 +321,9 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 });
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/*
+This endpoint logs the user out.
+*/
 app.get("/logout", (req, res) => {
   req.session = null;
   res.redirect("/urls");
